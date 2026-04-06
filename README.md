@@ -13,15 +13,15 @@
 
 ```
 /
-├── phase_adder.v               ✅ 已修复 (DIFF算术已更正)
+├── phase_adder.v               开发中
 ├── LMS_Calib.v                 🔄 调试中 (INVKDTC崩溃)
 ├── digital_main.v              🔄 开发中
 ├── digital_top.v               🔄 开发中
-├── DCO.v                        ⚠️  调查中 (极性)
+├── DCO.v                       
 ├── DTC_analog_10b.v            ✅ 已集成 (行为模型)
 ├── DTC_decoder.v               ✅ 完成
 ├── DTC_dig.v                   ✅ 完成
-├── TDC_AMS.v                   ⚠️  调查中 (与DCO耦合)
+├── TDC_AMS.v                   //应该与TDC重复了，后续看是否需要删除
 ├── Tracking.v                  ✅ 可用
 ├── FREF_generator.v            ✅ 完成
 ├── mmd.v                        ✅ 完成 (多模分频器)
