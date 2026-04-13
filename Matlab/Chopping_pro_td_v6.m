@@ -11,12 +11,14 @@ clc; clear; close all;
 % ============================================================
 CHOPPING_EN   = 1;
 DIFF_DTC_EN   = 1;
+LMS_POLY_EN   = 1;
+
 DITHER_EN     = 0;
 DITHER_AMP    = 2048;
 
 MASH_ORDER    = 1;
 
-LMS_POLY_EN   = 1;
+
 
 INL_OFFSET_EN  = 0;
 INL_OFFSET_VAL = 0.15;
@@ -27,8 +29,8 @@ INL_OFFSET_VAL = 0.15;
 INL_TYPE     = 3;
 % A_INL_EVEN   = 9.2e-12;
 % A_INL_ODD    = 0.8e-12;
-A_INL_EVEN   = 10e-12;
-A_INL_ODD    = 2e-12;
+A_INL_EVEN   = 4e-12;
+A_INL_ODD    = 0.8e-12;
 INL_MISMATCH = 0.05;
 
 
@@ -459,7 +461,8 @@ fprintf('\nReal td:\n');
 n_half  = floor(length(f_psd)/2);
 f_psd   = f_psd(1:n_half);
 Px_sine = Px_sine(1:n_half);
-semilogx(f_psd, Px_sine, 'g-', 'LineWidth', 1, 'DisplayName', 'time domain');
+% semilogx(f_psd, Px_sine, 'g-', 'LineWidth', 1, 'DisplayName', 'time domain');
+semilogx(f_psd, Px_sine, 'k-', 'LineWidth', 1, 'DisplayName', 'time domain');
 Px_R = 10.^(Px_sine/10);
 fstep_psd = f_psd(2) - f_psd(1);
 sum_Y = sum(Px_R(f_psd > 1e1)) * fstep_psd;
