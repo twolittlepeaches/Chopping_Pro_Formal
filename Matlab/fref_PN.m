@@ -38,8 +38,9 @@ sum_Y = sum(Y(2:end)) * delta_f;
 sqrt_sum_Y = sqrt(sum_Y);
 rms_jitter = sqrt_sum_Y / (2*pi*fr);
 fprintf(2,'Total integrated rms jitter = %.5f ps.\n', rms_jitter*1e12);
-figure;
+figure('Name','Phase Noise(Verilog)');
 semilogx(f, YdB-10*log10(2), 'g-');
+% semilogx(f, YdB-10*log10(2), 'k-');
 f0str = sprintf('fr=%0.6f GHz,', fr/1e9);
 f1str = sprintf('\nTotal integrated rms jitter = %.5f ps',rms_jitter*1e12);
 ylim([-260, -60])

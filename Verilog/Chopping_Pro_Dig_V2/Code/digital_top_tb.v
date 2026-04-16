@@ -813,8 +813,8 @@ initial begin
     // Reconfigure calibration enables (OUT17)
     // CAL_INVKDTC_EN=1, CAL_TDV2_EN=0, CAL_OFTDTC_EN=0, TDC_TEST_MODE=0
 
-    CHOPPER_EN_tmp     = 1'b0;
-    CAL_OFTDTC_EN_tmp  = 1'b0;//IF Chopping = 1，must en cal_oftdtc
+    CHOPPER_EN_tmp     = 1'b1;
+    CAL_OFTDTC_EN_tmp  = 1'b1;//IF Chopping = 1，must en cal_oftdtc
 
 
     CAL_INVKDTC_EN_tmp = 1'b1;
@@ -848,7 +848,8 @@ initial begin
     //====================================================================
     // Continue simulation
     //====================================================================
-    #500_000_000;  // 
+    //#500_000_000;  // 
+    #1000_000_000;  // 
     
     $display("\n===========================================");
     $display("Testbench Completed");

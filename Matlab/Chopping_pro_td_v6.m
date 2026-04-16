@@ -16,7 +16,7 @@ LMS_POLY_EN   = 1;
 DITHER_EN     = 0;
 DITHER_AMP    = 2048;
 
-MASH_ORDER    = 1;
+MASH_ORDER    = 2;
 
 
 

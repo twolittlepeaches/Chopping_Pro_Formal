@@ -211,7 +211,7 @@ module digital_top (
     wire CAL_POLY_EN;    // POLY Legendre校准使能（临时变量，SPI后续再接）
 
     assign MASH_SEL    = 1'b0;  // Default to MASH1
-    assign DIFF_EN     = 1'b0;  // Default to single-ended
+    assign DIFF_EN     = 1'b1;  // Default to single-ended
     assign CAL_POLY_EN = 1'b0;  // Default: POLY cal disabled（仿真时在testbench覆盖）
     //========================================================================
     // Digital Main instantiation
