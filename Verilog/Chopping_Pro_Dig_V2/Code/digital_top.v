@@ -64,12 +64,10 @@ module digital_top (
     wire        OTW_MANUAL_EN;
     wire        DCO_SD_EN;
     wire        MAIN_DTC_TEST_EN;
-    wire        TDV2_EN;
     wire        TDC_TEST_MODE;
     wire        CHOPPER_EN;
     wire        DCO_DEM_EN;
     wire        CAL_INVKDTC_EN;
-    wire        CAL_TDV2_EN;
     wire        CAL_OFTDTC_EN;
     wire [7:0]  DTC_TEST_P1;
     wire [7:0]  DTC_TEST_P2;
@@ -82,13 +80,11 @@ module digital_top (
     wire        RST_N_DIGMAIN;
     wire        TDC_OUT2SPI_FREEZE;
     wire        INVKDTC_OUT2SPI_FREEZE;
-    wire        Tvd2_mis_OUT2SPI_FREEZE;
     wire        OFTDTC_OUT2SPI_FREEZE;
     
     // Signals from digital_main to SPI_slave (status feedback)
     wire [7:0]  TDC_OUT2SPI;
     wire [11:0] INVKDTC_OUT2SPI;
-    wire [11:0] Tvd2_mis_OUT2SPI;
     wire [11:0] OFTDTC_OUT2SPI;
     
     // Signals between digital_main and sd_mod
@@ -131,12 +127,12 @@ module digital_top (
     assign OTW_MANUAL[12:8] = spi_out13_full[4:0];
     assign {OTW_MANUAL_EN, BB_EN} = spi_out14_full[1:0];
     assign {DCO_SD_EN, MAIN_DTC_TEST_EN} = spi_out15_full[1:0];
-    assign {TDV2_EN, CHOPPER_EN, DCO_DEM_EN} = spi_out16_full[2:0];
-    assign {CAL_INVKDTC_EN, CAL_TDV2_EN, CAL_OFTDTC_EN, TDC_TEST_MODE} = spi_out17_full[3:0];
+    assign {CHOPPER_EN, DCO_DEM_EN} = spi_out16_full[1:0];
+    assign {CAL_INVKDTC_EN, CAL_OFTDTC_EN, TDC_TEST_MODE} = {spi_out17_full[3], spi_out17_full[1], spi_out17_full[0]};
     assign DTC_TEST_DCW1[9:8] = spi_out21_full[1:0];
     assign DTC_TEST_DCW2[9:8] = spi_out23_full[1:0];
     assign {DTC_TEST_EDGE_SEL, DTC_TEST_MODE} = spi_out24_full[1:0];
-    assign {INVKDTC_OUT2SPI_FREEZE, Tvd2_mis_OUT2SPI_FREEZE, OFTDTC_OUT2SPI_FREEZE} = spi_out25_full[2:0];
+    assign {INVKDTC_OUT2SPI_FREEZE, OFTDTC_OUT2SPI_FREEZE} = spi_out25_full[1:0];
     assign OFFSET_DTC_CTRL_manual[9:8] = spi_out27_full[1:0];
     assign {RST_N_DIGMAIN, DTC_CTRL_manual[9:8]} = {spi_out29_full[7], spi_out29_full[1:0]};
 
@@ -154,8 +150,8 @@ module digital_top (
         .IN01       (TDC_OUT2SPI),
         .IN02       (INVKDTC_OUT2SPI[7:0]),
         .IN03       ({4'b0000, INVKDTC_OUT2SPI[11:8]}),
-        .IN04       (Tvd2_mis_OUT2SPI[7:0]),
-        .IN05       ({4'b0000, Tvd2_mis_OUT2SPI[11:8]}),
+        .IN04       (8'h00),
+        .IN05       (8'h00),
         .IN06       (OFTDTC_OUT2SPI[7:0]),
         .IN07       ({4'b0000, OFTDTC_OUT2SPI[11:8]}),
         .IN08       (Reserved_IN1),
@@ -179,7 +175,7 @@ module digital_top (
         .OUT13      (spi_out13_full),          // [4:0] used for OTW_MANUAL[12:8]
         .OUT14      (spi_out14_full),          // [1:0] used for OTW_MANUAL_EN, BB_EN
         .OUT15      (spi_out15_full),          // [1:0] used for DCO_SD_EN, MAIN_DTC_TEST_EN
-        .OUT16      (spi_out16_full),          // [2:0] used for TDV2_EN, CHOPPER_EN, DCO_DEM_EN
+        .OUT16      (spi_out16_full),          // [1:0] used for CHOPPER_EN, DCO_DEM_EN
         .OUT17      (spi_out17_full),          // [3:0] used for calibration enables
         .OUT18      (DTC_TEST_P1),             // Fully used
         .OUT19      (DTC_TEST_P2),             // Fully used
@@ -208,11 +204,20 @@ module digital_top (
     
     wire MASH_SEL;
     wire DIFF_EN;
-    wire CAL_POLY_EN;    // POLY Legendre校准使能（临时变量，SPI后续再接）
+    wire CAL_POLY_EN;
 
-    assign MASH_SEL    = 1'b0;  // Default to MASH1
-    assign DIFF_EN     = 1'b1;  // Default to single-ended
-    assign CAL_POLY_EN = 1'b0;  // Default: POLY cal disabled（仿真时在testbench覆盖）
+    // spi_out17_full bit 分配：
+    //   [0] TDC_TEST_MODE
+    //   [1] CAL_OFTDTC_EN
+    
+    //   [3] CAL_INVKDTC_EN
+    //   [4] MASH_SEL      (0=MASH1, 1=MASH1-1)
+    //   [5] DIFF_EN        (0=SE,    1=DIFF)
+    //   [6] CAL_POLY_EN   (0=off,   1=on)
+    //   [7] reserved
+    assign MASH_SEL    = spi_out17_full[4];
+    assign DIFF_EN     = spi_out17_full[5];
+    assign CAL_POLY_EN = spi_out17_full[6];
     //========================================================================
     // Digital Main instantiation
     //========================================================================
@@ -252,10 +257,8 @@ module digital_top (
         .MASH_SEL                    (MASH_SEL),
         .DIFF_EN                     (DIFF_EN),
         .CAL_INVKDTC_EN             (CAL_INVKDTC_EN),
-        .CAL_TDV2_EN                (CAL_TDV2_EN),
         .CAL_OFTDTC_EN              (CAL_OFTDTC_EN),
         .CAL_POLY_EN                (CAL_POLY_EN),
-        .TDV2_EN                    (TDV2_EN),
         .MMD_RN                     (MMD_RN),
         .DTC_TEST_P1                (DTC_TEST_P1),
         .DTC_TEST_P2                (DTC_TEST_P2),
@@ -264,10 +267,8 @@ module digital_top (
         .DTC_TEST_EDGE_SEL          (DTC_TEST_EDGE_SEL),
         .DTC_TEST_MODE              (DTC_TEST_MODE),
         .INVKDTC_OUT2SPI_FREEZE     (INVKDTC_OUT2SPI_FREEZE),
-        .Tvd2_mis_OUT2SPI_FREEZE    (Tvd2_mis_OUT2SPI_FREEZE),
         .OFTDTC_OUT2SPI_FREEZE      (OFTDTC_OUT2SPI_FREEZE),
         .INVKDTC_OUT2SPI            (INVKDTC_OUT2SPI),
-        .Tvd2_mis_OUT2SPI           (Tvd2_mis_OUT2SPI),
         .OFTDTC_OUT2SPI             (OFTDTC_OUT2SPI),
         .TDC_TEST_MODE              (TDC_TEST_MODE),
         .OFFSET_DTC_CTRL_manual     (OFFSET_DTC_CTRL_manual),

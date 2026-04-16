@@ -337,7 +337,9 @@ for step = 1:Sim_Time
         end
         u_diff = (DCW_P_actual - DCW_N_actual) / (max_diff_code + eps);
         u_diff = max(-1, min(1, u_diff));
-        if EN_SWAP(step) > 0.5; u_diff = -u_diff; end
+        if EN_SWAP(step) > 0.5 % Chopping swap 时符号还原
+            u_diff = -u_diff; 
+        end
         poly_val = 0.5 * (5 * u_diff^3 - 3 * u_diff);
         phie_raw = phie_raw - (floor(alpha_odd * poly_val / delta_TDC) - 0.5) * delta_TDC / Tv;
     end

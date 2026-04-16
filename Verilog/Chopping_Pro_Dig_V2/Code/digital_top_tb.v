@@ -1,3 +1,4 @@
+
 `timescale 1ps/1fs
 
 module digital_top_tb();
@@ -157,15 +158,16 @@ reg        BB_EN_tmp;              // -> OUT14
 // DCO and DTC control
 reg        DCO_SD_EN_tmp;          // -> OUT15
 reg        MAIN_DTC_TEST_EN_tmp;   // -> OUT15
-reg        TDV2_EN_tmp;            // -> OUT16
 reg        CHOPPER_EN_tmp;         // -> OUT16
 reg        DCO_DEM_EN_tmp;         // -> OUT16
 
 // Calibration and test modes
 reg        CAL_INVKDTC_EN_tmp;     // -> OUT17
-reg        CAL_TDV2_EN_tmp;        // -> OUT17
 reg        CAL_OFTDTC_EN_tmp;      // -> OUT17
-reg        TDC_TEST_MODE_tmp;      // -> OUT17
+reg        TDC_TEST_MODE_tmp;      // -> OUT17[0]
+reg        MASH_SEL_tmp;           // -> OUT17[4]  0=MASH1, 1=MASH1-1
+reg        DIFF_EN_tmp;            // -> OUT17[5]  0=SE,    1=DIFF
+reg        CAL_POLY_EN_tmp;        // -> OUT17[6]  0=off,   1=on
 
 // DTC test parameters
 reg [7:0]  DTC_TEST_P1_tmp;       // -> OUT18
@@ -180,7 +182,6 @@ reg [9:0]  OFFSET_DTC_CTRL_manual_tmp; // -> OUT26,OUT27
 reg [9:0]  DTC_CTRL_manual_tmp;        // -> OUT28,OUT29
 reg        RST_N_DIGMAIN_tmp;          // -> OUT29
 reg        INVKDTC_OUT2SPI_FREEZE_tmp; // -> OUT25
-reg        Tvd2_mis_OUT2SPI_FREEZE_tmp;// -> OUT25
 reg        OFTDTC_OUT2SPI_FREEZE_tmp;  // -> OUT25
 
 //for extract signals from digital top to ana SPI/dig input
@@ -230,8 +231,12 @@ assign spi_out14 = {6'b000000, OTW_MANUAL_EN_tmp, BB_EN_tmp};
 
 // Prepare DCO and DTC controls
 assign spi_out15 = {6'b000000, DCO_SD_EN_tmp, MAIN_DTC_TEST_EN_tmp};
-assign spi_out16 = {5'b00000, TDV2_EN_tmp, CHOPPER_EN_tmp, DCO_DEM_EN_tmp};
-assign spi_out17 = {4'b0000, CAL_INVKDTC_EN_tmp, CAL_TDV2_EN_tmp, CAL_OFTDTC_EN_tmp, TDC_TEST_MODE_tmp};
+assign spi_out16 = {6'b000000, CHOPPER_EN_tmp, DCO_DEM_EN_tmp};
+// OUT17 bit 分配:
+// [0] TDC_TEST_MODE  [1] CAL_OFTDTC_EN  [2] reserved(0)  [3] CAL_INVKDTC_EN
+// [4] MASH_SEL       [5] DIFF_EN         [6] CAL_POLY_EN  [7] reserved
+assign spi_out17 = {1'b0, CAL_POLY_EN_tmp, DIFF_EN_tmp, MASH_SEL_tmp,
+                   CAL_INVKDTC_EN_tmp, 1'b0, CAL_OFTDTC_EN_tmp, TDC_TEST_MODE_tmp};
 
 // Prepare DTC test parameters
 assign spi_out18 = DTC_TEST_P1_tmp;
@@ -243,7 +248,7 @@ assign spi_out23 = {6'b000000, DTC_TEST_DCW2_tmp[9:8]};
 assign spi_out24 = {6'b000000, DTC_TEST_EDGE_SEL_tmp, DTC_TEST_MODE_tmp};
 
 // Prepare freeze signals
-assign spi_out25 = {5'b00000, INVKDTC_OUT2SPI_FREEZE_tmp, Tvd2_mis_OUT2SPI_FREEZE_tmp, OFTDTC_OUT2SPI_FREEZE_tmp};
+assign spi_out25 = {6'b000000, INVKDTC_OUT2SPI_FREEZE_tmp, OFTDTC_OUT2SPI_FREEZE_tmp};
 
 // Prepare DTC controls
 assign spi_out26 = OFFSET_DTC_CTRL_manual_tmp[7:0];
@@ -429,8 +434,8 @@ DTC_analog_10b #(
     .DTC_top_cap_ctrl_4bit_binary   (DTC_N_top_4b),
     .DTC_top_cap_ctrl_6bit_unary    (DTC_N_top_6u),
     .DTC_bot_cap_ctrl_4bit_unary    (DTC_N_bot_4u),
-    .DTC_pre_clk_test           (DTC_N_pre_clk_test),//1'b0
-    .DTC_pre_clk_sel            (DTC_N_pre_clk_sel),//1'b0
+    .DTC_pre_clk_test           (1'b0),
+    .DTC_pre_clk_sel            (1'b0),
     .OUT                        (OFFSET_DTC_clk_delay)
 );
 
@@ -585,7 +590,6 @@ initial begin
 
     // Control freeze signals
     INVKDTC_OUT2SPI_FREEZE_tmp = 1'b1;
-    Tvd2_mis_OUT2SPI_FREEZE_tmp = 1'b1;
     OFTDTC_OUT2SPI_FREEZE_tmp = 1'b1;
 
     // DTC control values
@@ -617,9 +621,10 @@ initial begin
     DCO_SD_EN_tmp = 1'b0;
 	CHOPPER_EN_tmp = 1'b0;
     CAL_INVKDTC_EN_tmp = 1'b0;
-    TDV2_EN_tmp = 1'b0;
-    CAL_TDV2_EN_tmp = 1'b0;
     CAL_OFTDTC_EN_tmp = 1'b0;
+    MASH_SEL_tmp    = 1'b0;  // 0=MASH1, 1=MASH1-1
+    DIFF_EN_tmp     = 1'b1;  // 1=DIFF mode
+    CAL_POLY_EN_tmp = 1'b1;  // off by default
 
 
     TDC_OUT2SPI_FREEZE_tmp = 1'b1;
@@ -700,9 +705,9 @@ initial begin
     spi_unit_write(7'd15, spi_out15);
     $display("Time %0t: Written DCO_SD_EN & MAIN_DTC_TEST_EN = 0x%0h", $time, spi_out15);
 
-    // Configure TDV2_EN, CHOPPER_EN, DCO_DEM_EN (OUT16)
+    // Configure CHOPPER_EN, DCO_DEM_EN (OUT16)
     spi_unit_write(7'd16, spi_out16);
-    $display("Time %0t: Written TDV2_EN, CHOPPER_EN, DCO_DEM_EN = 0x%0h", $time, spi_out16);
+    $display("Time %0t: Written CHOPPER_EN, DCO_DEM_EN = 0x%0h", $time, spi_out16);
 
     // Configure Calibration & TDC_TEST_MODE (OUT17)
     spi_unit_write(7'd17, spi_out17);
@@ -811,7 +816,6 @@ initial begin
     $display("===========================================");
 //
     // Reconfigure calibration enables (OUT17)
-    // CAL_INVKDTC_EN=1, CAL_TDV2_EN=0, CAL_OFTDTC_EN=0, TDC_TEST_MODE=0
 
     CHOPPER_EN_tmp     = 1'b1;
     CAL_OFTDTC_EN_tmp  = 1'b1;//IF Chopping = 1，must en cal_oftdtc
@@ -820,14 +824,13 @@ initial begin
     CAL_INVKDTC_EN_tmp = 1'b1;
 
     
-    // Configure spi_out16 and display bit-by-bit (corresponds to TDV2_EN, CHOPPER_EN, DCO_DEM_EN)
+    // Configure spi_out16 and display bit-by-bit (CHOPPER_EN, DCO_DEM_EN)
 
 #1
 
     spi_unit_write(7'd16, spi_out16);
     $display("Time %0t: Written spi_out16 (address 7'd16) = 0x%0h", $time, spi_out16);
     $display("         spi_out16 bit-level breakdown:");
-    $display("         - Bit2 (TDV2_EN_tmp)   : 1'b%b", spi_out16[2]);
     $display("         - Bit1 (CHOPPER_EN_tmp): 1'b%b", spi_out16[1]);
     $display("         - Bit0 (DCO_DEM_EN_tmp): 1'b%b", spi_out16[0]);
 
@@ -837,7 +840,6 @@ initial begin
     $display("\nTime %0t: Written spi_out17 (address 7'd17) = 0x%0h", $time, spi_out17);
     $display("         spi_out17 bit-level breakdown:");
     $display("         - Bit3 (CAL_INVKDTC_EN_tmp)  : 1'b%b (INVKDTC Calibration Enable)", spi_out17[3]);
-    $display("         - Bit2 (CAL_TDV2_EN_tmp)     : 1'b%b (TDV2 Calibration Enable)", spi_out17[2]);
     $display("         - Bit1 (CAL_OFTDTC_EN_tmp)   : 1'b%b (OFTDTC Calibration Enable)", spi_out17[1]);
     $display("         - Bit0 (TDC_TEST_MODE_tmp)   : 1'b%b (TDC Test Mode Switch)", spi_out17[0]); 
     
@@ -848,8 +850,7 @@ initial begin
     //====================================================================
     // Continue simulation
     //====================================================================
-    //#500_000_000;  // 
-    #1000_000_000;  // 
+    #500_000_000;  // 
     
     $display("\n===========================================");
     $display("Testbench Completed");

@@ -1,3 +1,4 @@
+
 `timescale 1ps/1fs
 
 module digital_main (
@@ -36,10 +37,8 @@ module digital_main (
     MASH_SEL,
     DIFF_EN,
     CAL_INVKDTC_EN,
-    CAL_TDV2_EN,
     CAL_OFTDTC_EN,
     CAL_POLY_EN,
-    TDV2_EN,
     MMD_RN,
     DTC_TEST_P1,
     DTC_TEST_P2,
@@ -48,10 +47,8 @@ module digital_main (
     DTC_TEST_EDGE_SEL,
     DTC_TEST_MODE,
     INVKDTC_OUT2SPI_FREEZE,
-    Tvd2_mis_OUT2SPI_FREEZE,
     OFTDTC_OUT2SPI_FREEZE,
     INVKDTC_OUT2SPI,
-    Tvd2_mis_OUT2SPI,
     OFTDTC_OUT2SPI,
     TDC_TEST_MODE,
     OFFSET_DTC_CTRL_manual,
@@ -101,7 +98,6 @@ module digital_main (
 
         // Calibration control
         input         CAL_INVKDTC_EN;          // invKDTC calibration enable
-        input         CAL_TDV2_EN;             // TDV2 mismatch calibration enable
         input         CAL_OFTDTC_EN;           // Offset DTC calibration enable
         input         CAL_POLY_EN;             // Legendre POLY calibration enable (temp, no SPI yet)
 
@@ -110,7 +106,6 @@ module digital_main (
         output        Chopping_EN;                 // SWAP enable output
         input         MASH_SEL;                // MASH order: 0=MASH1, 1=MASH1-1
         input         DIFF_EN;                 // differential DTC: 0=SE, 1=DIFF
-        input         TDV2_EN;                 // TDV2 (dual phase) enable
         output  [4:0] MMD_RN;                  // MMD division ratio
 
         // DTC test mode
@@ -123,10 +118,8 @@ module digital_main (
         input         DTC_TEST_MODE;           // DTC test mode enable: 0/1
 
         input INVKDTC_OUT2SPI_FREEZE;
-        input Tvd2_mis_OUT2SPI_FREEZE;
         input OFTDTC_OUT2SPI_FREEZE;
         output  [11:0] INVKDTC_OUT2SPI;
-        output  [11:0] Tvd2_mis_OUT2SPI;
         output  [11:0] OFTDTC_OUT2SPI;
 
         input TDC_TEST_MODE;
@@ -146,7 +139,6 @@ module digital_main (
   wire [9:0] OFFSET_DTC_CTRL_10b;
   wire [11:0] PHR_F;
   wire PHRF_OV;
-  wire MMD_UN; // underflow due to TDV2 and SWAP.
 
 
   reg [7:0] random_ini;
@@ -158,7 +150,6 @@ module digital_main (
   wire   feedback_tdv2;  
   reg MMD_PHASE;    
   wire [9:0] DTC_TEST_DCWout;
-  reg MMD_UN_Q;
   wire [9:0] DTC_P_CTRL_10b_final;
   wire [9:0] DTC_N_CTRL_10b_final ;
 
@@ -245,17 +236,17 @@ LMS_Calib #(
     .INVKDTC_OUT2SPI_FREEZE(INVKDTC_OUT2SPI_FREEZE),
     .OFTDTC_OUT2SPI_FREEZE(OFTDTC_OUT2SPI_FREEZE),
     .INVKDTC_OUT2SPI(INVKDTC_OUT2SPI),
-    .Tvd2_mis_OUT2SPI(Tvd2_mis_OUT2SPI),
     .OFTDTC_OUT2SPI(OFTDTC_OUT2SPI),
     .INVKDTC(INVKDTC_CAL),
     .OFFSET_DTC_CTRL_10b(OFFSET_DTC_CTRL_10b),
     // --- POLY新增端口 ---
-    .DTC_P_CTRL_10b(DTC_P_CTRL_10b),   // DCW（含512偏移，来自phase_adder）
+    .DTC_P_CTRL_10b(DTC_P_CTRL_10b),
     .DTC_N_CTRL_10b(DTC_N_CTRL_10b),
     .DIFF_EN(DIFF_EN),
+    .MASH_SEL(MASH_SEL),
     .CAL_POLY_EN(CAL_POLY_EN),
-    .PHE_CORR(PHE_CORR),               // 补偿后相位误差 → Tracking
-    .ALPHA_ODD(ALPHA_ODD)              // POLY系数（监测）
+    .PHE_CORR(PHE_CORR),
+    .ALPHA_ODD(ALPHA_ODD)
 );
 
 assign INVKDTC = CAL_INVKDTC_EN ? INVKDTC_CAL : INVKDTC_MANUAL;
