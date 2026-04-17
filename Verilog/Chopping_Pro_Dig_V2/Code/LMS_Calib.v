@@ -19,13 +19,13 @@
 //      P₃(u) = 0.5×(5u³ - 3u)
 //      PHE_CORR = PHE - alpha_int × P₃(u_prev) >> 8
 // =============================================================================
- 
+
 module LMS_Calib #(
     parameter W_PHE      = 12,
     parameter W_INVKDTC  = 12,
     parameter W_FCWF     = 12,
     parameter W_DTC_CTRL = 10,
-    parameter [31:0] MU_POLY = 32'd128
+    parameter [31:0] MU_POLY = 32'd256
 ) (
     input  CKR,
     input  RST_N,
@@ -94,6 +94,13 @@ assign PHE_CORR =
 assign ALPHA_ODD           = alpha_int;
 assign OFFSET_DTC_CTRL_10b = OFFSET_DTC_calib[11:2];
  
+// 1. 计算当前拍真实的差分控制字（已包含MASH逻辑和Chopping极性）
+wire signed [10:0] diff_c_comb = DIFF_EN ? 
+    ($signed({1'b0, DTC_P_Q}) - $signed({1'b0, DTC_N_Q})) : 
+    ($signed({1'b0, DTC_P_Q}) - 11'd512);
+
+// 2. 提取真实的、未被Chopping翻转的相位正负号（对应 MATLAB 中的 sign(PHRF_cur)）
+wire phrf_sign_est = Chopping_EN_Q ? (diff_c_comb >= 0) : (diff_c_comb < 0);
 // =========================================================================
 // 校准环路
 // =========================================================================
@@ -122,9 +129,11 @@ always @(posedge CKR, negedge RST_N) begin
         // ------------------------------------------------------------------
         // 1. INVKDTC 增益校准
         // ------------------------------------------------------------------
-        INVKDTC <= INVKDTC + (CAL_INVKDTC_EN ?
+        /*INVKDTC <= INVKDTC + (CAL_INVKDTC_EN ?
             ((~PHE_CORR[W_PHE-1] ^ PHR_F_Q[W_FCWF-1]) ? 12'hFFF : 12'h001) : 1'b0);
- 
+ */
+ INVKDTC <= INVKDTC + (CAL_INVKDTC_EN ?
+    ((~PHE_CORR[W_PHE-1] ^ phrf_sign_est) ? 12'hFFF : 12'h001) : 1'b0);
         // ------------------------------------------------------------------
         // 2. OFTDTC 偏置校准
         // ------------------------------------------------------------------

@@ -624,12 +624,11 @@ initial begin
     CAL_OFTDTC_EN_tmp = 1'b0;
     MASH_SEL_tmp    = 1'b0;  // 0=MASH1, 1=MASH1-1
     DIFF_EN_tmp     = 1'b1;  // 1=DIFF mode
-    CAL_POLY_EN_tmp = 1'b1;  // off by default
 
 
     TDC_OUT2SPI_FREEZE_tmp = 1'b1;
 
-    
+//
     $display("===========================================");
     $display("Digital Top Testbench Started");
     $display("Time: %0t", $time);
@@ -640,7 +639,7 @@ initial begin
     RST_N = 1'b1;
     $display("Time %0t: SPI Reset released", $time);
     #10_000_000;
-//
+
     //====================================================================
     // SPI Configuration Phase
     //====================================================================
@@ -820,6 +819,7 @@ initial begin
     CHOPPER_EN_tmp     = 1'b1;
     CAL_OFTDTC_EN_tmp  = 1'b1;//IF Chopping = 1，must en cal_oftdtc
 
+    CAL_POLY_EN_tmp = 1'b1;  // off by default
 
     CAL_INVKDTC_EN_tmp = 1'b1;
 
@@ -839,9 +839,9 @@ initial begin
     spi_unit_write(7'd17, spi_out17);
     $display("\nTime %0t: Written spi_out17 (address 7'd17) = 0x%0h", $time, spi_out17);
     $display("         spi_out17 bit-level breakdown:");
-    $display("         - Bit3 (CAL_INVKDTC_EN_tmp)  : 1'b%b (INVKDTC Calibration Enable)", spi_out17[3]);
-    $display("         - Bit1 (CAL_OFTDTC_EN_tmp)   : 1'b%b (OFTDTC Calibration Enable)", spi_out17[1]);
-    $display("         - Bit0 (TDC_TEST_MODE_tmp)   : 1'b%b (TDC Test Mode Switch)", spi_out17[0]); 
+    $display("         Bit3 (CAL_INVKDTC_EN_tmp)  : 1'b%b ", spi_out17[3]);
+    $display("         Bit1 (CAL_OFTDTC_EN_tmp)   : 1'b%b ", spi_out17[1]);
+    $display("         Bit0 (TDC_TEST_MODE_tmp)   : 1'b%b ", spi_out17[0]); 
     
     $display("===========================================");
     $display("Dynamic Reconfiguration Completed");
@@ -855,6 +855,13 @@ initial begin
     $display("\n===========================================");
     $display("Testbench Completed");
     $display("Total simulation time: %0t", $time);
+    $display("config:");
+    $display("MASH :             1'b%b", MASH_SEL_tmp);
+    $display("CAL_INVKDTC_EN :   1'b%b\n", CAL_INVKDTC_EN_tmp);
+    $display("CHOPPER_EN :       1'b%b", CHOPPER_EN_tmp);
+    $display("CAL_OFTDTC_EN :    1'b%b\n", CAL_OFTDTC_EN_tmp);
+    $display("DIFF_EN :          1'b%b\n", DIFF_EN_tmp);
+    $display("CAL_POLY_EN :      1'b%b", CAL_POLY_EN_tmp);
     $display("===========================================");
     $finish;
 end
