@@ -422,7 +422,7 @@ DTC_analog_10b #(
     .reso_binary    (0.5),
     .reso_unary     (8),
     .base_delay     (339),
-    .INL_MISMATCH   (0.1)
+    .INL_MISMATCH   (0.0)
 ) Offset_DTC_analog_10b_inst (
     .vdd_ref        (VD),
     .vdd            (VD),
@@ -443,15 +443,7 @@ DTC_analog_10b #(
 // TDC instantiation
 //========================================================================
 assign TDC_EN = 1'b1;  // Always enabled for this testbench
-/*
-TDC #(
-    .TDC_BITS(8)
-) TDC_inst (
-    .fref           (MAIN_DTC_clk_delayi),
-    .fdiv           (OFFSET_DTC_clk_delay),
-    .TDC_EN         (TDC_EN),
-    .TDC            (TDC_Q)
-);*/
+
 
 TDC #(
     .TDC_BITS(8)
@@ -816,10 +808,10 @@ initial begin
 //
     // Reconfigure calibration enables (OUT17)
 
-    CHOPPER_EN_tmp     = 1'b1;
-    CAL_OFTDTC_EN_tmp  = 1'b1;//IF Chopping = 1，must en cal_oftdtc
+    CHOPPER_EN_tmp     = 1'b0;
+    CAL_OFTDTC_EN_tmp  = 1'b0;//IF Chopping = 1，must en cal_oftdtc
 
-    CAL_POLY_EN_tmp = 1'b1;  // off by default
+    CAL_POLY_EN_tmp = 1'b0;  // off by default
 
     CAL_INVKDTC_EN_tmp = 1'b1;
 

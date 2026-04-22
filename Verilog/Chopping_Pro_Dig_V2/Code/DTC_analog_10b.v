@@ -56,8 +56,8 @@ parameter real reso_unary     = 8.0;   // ps per unary bit
 parameter real base_delay     = 339.0; // ps
 
 // INL多项式建模参数（对应MATLAB INL_TYPE=3）
-parameter real A_INL_EVEN     = 10;   // 偶函数INL系数（ps），u=1处峰值
-parameter real A_INL_ODD      = 60.0;   // 奇函数INL系数（ps），u=1处峰值
+parameter real A_INL_EVEN     = 10;   // 偶函数INL系数（ps），u=1处峰值  10
+parameter real A_INL_ODD      = 60;   // 奇函数INL系数（ps），u=1处峰值  60
 parameter real INL_MISMATCH   = 0.0;   // P/N路失配，P路=0，N路=如0.05
 
 // -------------------------------------------------------

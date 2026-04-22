@@ -1,6 +1,5 @@
 clc;clear;close all;
 
-%filename = './fref.txt';
 filename = 'E:\Tym_IC\Projects\Chopping_Pro_Formal\Questa_project\Chopping_Pro_V2\ckv.txt';
 % filename = 'E:\Tym_IC\Projects\ChoppingFracDPLL\choppingPLL2025_1p4_AMS\ckv.txt';
 formatSpec = '%19f%s%[^\n\r]';

@@ -6,19 +6,21 @@
 
 clc; clear; close all;
 
+
 % ============================================================
 %%  功能开关
 % ============================================================
 CHOPPING_EN   = 1;
 DIFF_DTC_EN   = 1;
 LMS_POLY_EN   = 1;
+MASH_ORDER    = 2;%1:一阶，2：1-1
 
 DITHER_EN     = 0;
 DITHER_AMP    = 2048;
 
-MASH_ORDER    = 2;
-
-
+PN_filename  = sprintf('652_PN(matlab)_%d__ %d %d %d.png',MASH_ORDER,CHOPPING_EN,DIFF_DTC_EN,LMS_POLY_EN);
+% DTC_filename = sprintf('65_2_DTC(matlab)_%d__ %d %d %d.png',MASH_ORDER,CHOPPING_EN,DIFF_DTC_EN,LMS_POLY_EN);
+POLY_filename = sprintf('652_POLY(matlab)_%d__ %d %d %d.png',MASH_ORDER,CHOPPING_EN,DIFF_DTC_EN,LMS_POLY_EN);
 
 INL_OFFSET_EN  = 0;
 INL_OFFSET_VAL = 0.15;
@@ -27,10 +29,16 @@ INL_OFFSET_VAL = 0.15;
 %%  DTC INL 参数
 % ============================================================
 INL_TYPE     = 3;
-% A_INL_EVEN   = 9.2e-12;
-% A_INL_ODD    = 0.8e-12;
-A_INL_EVEN   = 4e-12;
-A_INL_ODD    = 0.8e-12;
+
+% A_INL_EVEN   = 0;
+% A_INL_ODD    = 0;
+
+% A_INL_EVEN   = 2e-12;
+% A_INL_ODD    = 0.3e-12;
+
+A_INL_EVEN   = 10e-12;
+A_INL_ODD    = 2e-12;
+
 INL_MISMATCH = 0.05;
 
 
@@ -318,7 +326,7 @@ for step = 1:Sim_Time
         DCW_delta_log(step) = (t_N - t_P) / DTC_reso;
     end
 
-    %% 8. TDC 量化 
+    %% 8. TDC 量化
 
     trise_quant(step) = trise(step);
 
@@ -330,15 +338,18 @@ for step = 1:Sim_Time
     %% 9. 勒让德多项式补偿
     poly_val = 0;
     if LMS_POLY_EN
-        if MASH_ORDER == 1
-            max_diff_code = 0.5 * gain_DTC_est;
-        else
-            max_diff_code = 1.0 * gain_DTC_est;
-        end
+        % if MASH_ORDER == 1
+        %     max_diff_code = 0.5 * gain_DTC_est;
+        % else
+        %     max_diff_code = 1.0 * gain_DTC_est;
+        % end
+        max_diff_code = 1.0 * gain_DTC_est;
+
+
         u_diff = (DCW_P_actual - DCW_N_actual) / (max_diff_code + eps);
         u_diff = max(-1, min(1, u_diff));
         if EN_SWAP(step) > 0.5 % Chopping swap 时符号还原
-            u_diff = -u_diff; 
+            u_diff = -u_diff;
         end
         poly_val = 0.5 * (5 * u_diff^3 - 3 * u_diff);
         phie_raw = phie_raw - (floor(alpha_odd * poly_val / delta_TDC) - 0.5) * delta_TDC / Tv;
@@ -399,10 +410,12 @@ fprintf('仿真完成，step_DCO = %d\n', step_DCO);
 settle_start_fref = round(Sim_Time * 0.6);
 
 
+
+
 % ============================================================
 %%  Plot 1: CKV 瞬时频率偏差
 % ============================================================
-if 1
+if 0
     fckv_div = 1./tckv_period(1:settle_sample) - fv;
     fckv_div_avg = zeros(size(fckv_div));
     N_avg = 25;
@@ -423,7 +436,7 @@ end
 % ============================================================
 %%  Plot 2: 瞬时相位误差
 % ============================================================
-if 1
+if 0
     figure('Name','Phase Error phie');
     plot((1:Sim_Time)*Tref*1e6, phie, 'b', 'LineWidth', 0.5);
     grid on;
@@ -435,47 +448,75 @@ end
 % ============================================================
 %%  Plot 3: 相位噪声
 % ============================================================
-figure('Name','Phase Noise');
-rbw  = 1e3;
-f    = 0:rbw:fv-rbw;
-PN_tdc = (2*pi)^2/12*(delta_TDC/Tv)^2/fref * ones(size(f));
-PN_vco = S_DCO_offset * (f_offset./f).^2;
-Hol    = (alpha + rho*fref./(1 - exp(-2*pi*1j*f/fref))/fref) ...
-       .* fref ./ (1 - exp(-2*pi*1j*f/fv)) / fv .* sinc(f*Tref);
-Hcl_ref = fcw * Hol ./ (1+Hol);
-Hcl_tdc = Hol ./ (1+Hol);
-Hcl_dco = 1 ./ (1+Hol);
-Scl_ref = S_ref   * abs(Hcl_ref.^2);
-Scl_tdc = PN_tdc  .* abs(Hcl_tdc.^2);
-Scl_dco = PN_vco  .* abs(Hcl_dco.^2);
-Scl_tot = Scl_ref + Scl_tdc + Scl_dco;
-semilogx(f, 10*log10(Scl_ref), 'b--'); grid on; hold on;
-semilogx(f, 10*log10(Scl_tdc), 'b-');
-semilogx(f, 10*log10(Scl_dco), 'b-');
-semilogx(f, 10*log10(Scl_tot), 'r--', 'LineWidth', 1.5, 'DisplayName', 's domain');
-PN_dcoQ = 1/12*(KDCO/2^NB_dco./f).^2/fref.*sinc(f/fref).^2;
-semilogx(f, 10*log10(PN_dcoQ.*abs(Hcl_dco.^2)), 'b-');
+if 1
+    figure('Name','Phase Noise');
 
-PHE = tckv_div(settle_sample:step_DCO) / Tv * 2*pi;
-PHE = PHE - mean(PHE);
-fprintf('\nReal td:\n');
-[Px_sine, f_psd] = fun_calc_psd_dbs(PHE, fv, rbw);
-n_half  = floor(length(f_psd)/2);
-f_psd   = f_psd(1:n_half);
-Px_sine = Px_sine(1:n_half);
-% semilogx(f_psd, Px_sine, 'g-', 'LineWidth', 1, 'DisplayName', 'time domain');
-semilogx(f_psd, Px_sine, 'k-', 'LineWidth', 1, 'DisplayName', 'time domain');
-Px_R = 10.^(Px_sine/10);
-fstep_psd = f_psd(2) - f_psd(1);
-sum_Y = sum(Px_R(f_psd > 1e1)) * fstep_psd;
-jitter = sqrt(2*sum_Y) / (2*pi*fv);
-xlim([1e3, fv/2]); ylim([-180, -40]);
-title(['fv=', num2str(fv/1e9), 'GHz; rms jitter=', num2str(floor(jitter*1e15)), ' fs']);
+    rbw  = 1e3;
+    f    = 0:rbw:fv-rbw;
+    PN_tdc = (2*pi)^2/12*(delta_TDC/Tv)^2/fref * ones(size(f));
+    PN_vco = S_DCO_offset * (f_offset./f).^2;
+    Hol    = (alpha + rho*fref./(1 - exp(-2*pi*1j*f/fref))/fref) ...
+        .* fref ./ (1 - exp(-2*pi*1j*f/fv)) / fv .* sinc(f*Tref);
+    Hcl_ref = fcw * Hol ./ (1+Hol);
+    Hcl_tdc = Hol ./ (1+Hol);
+    Hcl_dco = 1 ./ (1+Hol);
+    Scl_ref = S_ref   * abs(Hcl_ref.^2);
+    Scl_tdc = PN_tdc  .* abs(Hcl_tdc.^2);
+    Scl_dco = PN_vco  .* abs(Hcl_dco.^2);
+    Scl_tot = Scl_ref + Scl_tdc + Scl_dco;
+    semilogx(f, 10*log10(Scl_ref), 'b--'); grid on; hold on;
+    semilogx(f, 10*log10(Scl_tdc), 'b-');
+    semilogx(f, 10*log10(Scl_dco), 'b-');
+    semilogx(f, 10*log10(Scl_tot), 'r--', 'LineWidth', 1.5, 'DisplayName', 's domain');
+    PN_dcoQ = 1/12*(KDCO/2^NB_dco./f).^2/fref.*sinc(f/fref).^2;
+    semilogx(f, 10*log10(PN_dcoQ.*abs(Hcl_dco.^2)), 'b-');
+
+    set(gcf, 'PaperPositionMode', 'auto');
+
+    PHE = tckv_div(settle_sample:step_DCO) / Tv * 2*pi;
+    PHE = PHE - mean(PHE);
+    fprintf('\nReal td:\n');
+    [Px_sine, f_psd] = fun_calc_psd_dbs(PHE, fv, rbw);
+    n_half  = floor(length(f_psd)/2);
+    f_psd   = f_psd(1:n_half);
+    Px_sine = Px_sine(1:n_half);
+    % semilogx(f_psd, Px_sine, 'g-', 'LineWidth', 1, 'DisplayName', 'time domain');
+    semilogx(f_psd, Px_sine, 'k-', 'LineWidth', 1, 'DisplayName', 'time domain');
+    Px_R = 10.^(Px_sine/10);
+    fstep_psd = f_psd(2) - f_psd(1);
+    sum_Y = sum(Px_R(f_psd > 1e1)) * fstep_psd;
+    jitter = sqrt(2*sum_Y) / (2*pi*fv);
+    xlim([1e3, fv/2]); ylim([-180, -40]);
+    title(['fv=', num2str(fv/1e9), 'GHz; rms jitter=', num2str(floor(jitter*1e15)), ' fs']);
+
+    %% ===================================
+    %% 论文绘图使用，其余时刻删除
+    %% ==================================
+    if 1
+        % 1. 统一白底
+        set(gcf, 'Color', 'w');
+        set(gca, 'Color', 'w');
+
+        % 2. 字体调小（10.5对应毕业论文常用的五号字）
+        set(gca, 'FontName', 'Times New Roman');
+        set(gca, 'FontSize', 10.5);
+        set(gca, 'FontWeight', 'bold');
+        set(gca, 'LineWidth', 1);
+
+        % 3. 画布拉大（适配毕业论文 A4 单栏，15cm 宽 x 10cm 高）
+        set(gcf, 'Units', 'centimeters');
+        set(gcf, 'Position', [5 5 15 10]);
+        set(gcf, 'PaperPositionMode', 'auto');
+
+        exportgraphics(gcf, PN_filename, 'ContentType', 'vector');
+    end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+end
 
 % ============================================================
 %%  Plot 4: ADPLL 输出频谱
 % ============================================================
-if 1
+if 0
     Out_sine = sin(2*pi*tckv(1+10000:round(Sim_Time*fcw-2e4)+10000)/Tv);
     fprintf('Real sd:\n');
     [Px_sine2, f2] = fun_calc_psd_dbs(Out_sine, fv, rbw, fstep_psd);
@@ -506,14 +547,14 @@ if 1
     psd_ckv   = 20*log10(abs(CKV_F)+1e-30);
     psd_dbc   = psd_ckv - psd_ckv(NFFT/2+1);
 
-    figure('Name','FFT');
-    plot(f_ckv/1e9, psd_dbc, 'g', 'LineWidth', 1);
-    grid on;
-    xlabel('Frequency (GHz)');
-    ylabel('Power (dBc)');
-    title(['CKV Spectrum  fv = ', num2str(fv/1e9), ' GHz'], 'fontsize', 14);
-    xlim([(fv-0.8e6)/1e9, (fv+0.8e6)/1e9]);
-    ylim([-90, 5]);
+    % figure('Name','FFT');
+    % plot(f_ckv/1e9, psd_dbc, 'g', 'LineWidth', 1);
+    % grid on;
+    % xlabel('Frequency (GHz)');
+    % ylabel('Power (dBc)');
+    % title(['CKV Spectrum  fv = ', num2str(fv/1e9), ' GHz'], 'fontsize', 14);
+    % xlim([(fv-0.8e6)/1e9, (fv+0.8e6)/1e9]);
+    % ylim([-90, 5]);
 
     f_spur_theory = mod(FCW_F,1) * fref;
     if f_spur_theory > fref/2; f_spur_theory = fref - f_spur_theory; end
@@ -530,29 +571,60 @@ if 1
     figure('Name','DTC Debug');
     time_axis = (1:Sim_Time) * Tref * 1e6;
 
-    ax1 = subplot(4,1,1);
-    plot(time_axis, DCW_P_log, 'r', 'LineWidth', 1, 'DisplayName', 'P DTC'); hold on;
-    plot(time_axis, DCW_N_log, 'y', 'LineWidth', 1, 'DisplayName', 'N DTC');
-    plot(time_axis, DCW_delta_log, 'g', 'LineWidth', 1, 'DisplayName', '\Delta');
+    ax1 = subplot(2,1,1);
+    plot(time_axis, DCW_P_log, 'Color', [0.85 0.3 0.3], 'LineWidth', 1, 'DisplayName', 'P DTC'); hold on;
+    plot(time_axis, DCW_N_log, 'Color', [0.3 0.7 0.3], 'LineWidth', 1, 'DisplayName', 'N DTC');
+    plot(time_axis, DCW_delta_log, 'k-', 'LineWidth', 1, 'DisplayName', '\Delta');
     grid on; ylabel('Code (LSB)'); title('P/N DTC 控制码');
-    legend('Location', 'northeast');
+    lgd = legend('Location', 'northeast');
+    set(lgd, 'Box', 'on', 'EdgeColor', [0.8 0.8 0.8], ... % 浅灰色边框
+             'Color', [1 1 1 0.7], ...       % 70% 透明度的白色背景
+             'TextColor', [0.2 0.2 0.2]);
+    lgd.ItemTokenSize = [12,8];
 
-    ax2 = subplot(4,1,2);
-    plot(time_axis, PHRF_cur_log, 'g', 'LineWidth', 1);
+
+    ax2 = subplot(2,1,2);
+    plot(time_axis, PHRF_cur_log, 'Color', [0.3 0.7 0.3], 'LineWidth', 1);
     grid on; ylabel('Phase (Norm)'); title('分数相位 PHRF\_cur');
 
-    ax3 = subplot(4,1,3);
-    plot(time_axis, phie, 'y', 'LineWidth', 1);
-    grid on; ylabel('phie'); title('TDC 相位误差');
-
-    ax4 = subplot(4,1,4);
-    plot(time_axis, Phie_error_log, 'y', 'LineWidth', 1);
-    grid on; ylabel('phie'); title('TDC Phie error');
+    % ax3 = subplot(4,1,3);
+    % plot(time_axis, phie, 'k-', 'LineWidth', 1);
+    % grid on; ylabel('phie'); title('TDC 相位误差');
+    % 
+    % ax4 = subplot(4,1,4);
+    % plot(time_axis, Phie_error_log, 'k-', 'LineWidth', 1);
+    % grid on; ylabel('phie'); title('TDC Phie error');
 
     t_start = settle_start_fref * Tref * 1e6;
-    t_end   = min((settle_start_fref + 2000) * Tref * 1e6, Sim_Time*Tref*1e6);
-    linkaxes([ax1, ax2, ax3, ax4], 'x');
+    t_end   = min((settle_start_fref + 1000) * Tref * 1e6, Sim_Time*Tref*1e6);
+    % linkaxes([ax1, ax2, ax3, ax4], 'x');
+        linkaxes([ax1, ax2], 'x');
     xlim([t_start, t_end]);
+
+    %% ===================================
+    %% 论文绘图使用，其余时刻删除
+    %% ==================================
+    if 0
+        % 1. 统一白底
+        set(gcf, 'Color', 'w');
+        set(gca, 'Color', 'w');
+
+        % 2. 字体调小（10.5对应毕业论文常用的五号字）
+        set(gca, 'FontName', 'Times New Roman');
+        set(gca, 'FontSize', 10.5);
+        set(gca, 'FontWeight', 'bold');
+        set(gca, 'LineWidth', 1);
+
+        % 3. 画布拉大（适配毕业论文 A4 单栏，15cm 宽 x 10cm 高）
+        set(gcf, 'Units', 'centimeters');
+        set(gcf, 'Position', [5 5 15 10]);
+        set(gcf, 'PaperPositionMode', 'auto');
+
+        exportgraphics(gcf, DTC_filename, 'ContentType', 'vector');
+    end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 end
 
 % ============================================================
@@ -596,6 +668,29 @@ if 1
     else
         linkaxes([ax1, ax2], 'x');
     end
+
+        %% ===================================
+    %% 论文绘图使用，其余时刻删除
+    %% ==================================
+    if 1
+        % 1. 统一白底
+        set(gcf, 'Color', 'w');
+        set(gca, 'Color', 'w');
+
+        % 2. 字体调小（10.5对应毕业论文常用的五号字）
+        set(gca, 'FontName', 'Times New Roman');
+        set(gca, 'FontSize', 10.5);
+        set(gca, 'FontWeight', 'bold');
+        set(gca, 'LineWidth', 1);
+
+        % 3. 画布拉大（适配毕业论文 A4 单栏，15cm 宽 x 10cm 高）
+        set(gcf, 'Units', 'centimeters');
+        set(gcf, 'Position', [5 5 15 10]);
+        set(gcf, 'PaperPositionMode', 'auto');
+
+        exportgraphics(gcf, POLY_filename, 'ContentType', 'vector');
+    end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 end
 
